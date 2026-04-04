@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "title": "Drift Pic — Share photos with a random stranger",
+    "description": "Put your photo in a bottle, cast it to sea. Receive a bottle from someone, somewhere."
+  },
+  "home": {
+    "tagline": "Send a photo to a stranger.",
+    "sub": "Put your photo in a bottle and cast it to sea.\nA photo from somewhere in the world will drift back to you.",
+    "cta": "Put a photo in a bottle",
+    "howTitle": "How it works",
+    "how1": "Pick a photo and seal the bottle",
+    "how2": "Cast it out to sea",
+    "how3": "Wait for a bottle to drift back",
+    "note": "Photos are automatically deleted 24 hours after exchange. No login. Fully anonymous."
+  },
+  "send": {
+    "title": "Seal your photo in a bottle",
+    "dropHere": "Drop your photo here, or click to select",
+    "supportedFormats": "JPEG, PNG, GIF, WebP / Max 10MB",
+    "preview": "Preview",
+    "change": "Change photo",
+    "sendBtn": "Cast to sea",
+    "sending": "Casting...",
+    "rules": "※ Do not upload personal information or inappropriate content."
+  },
+  "waiting": {
+    "title": "Your bottle is drifting...",
+    "message": "Waiting for someone's bottle to arrive…",
+    "sub": "When another user casts their bottle, it will drift to you.\nKeep this page open.",
+    "checking": "Checking..."
+  },
+  "receive": {
+    "title": "A bottle has arrived!",
+    "openBtn": "Pull the cork",
+    "opening": "Opening...",
+    "from": "From where?",
+    "unknown": "Unknown",
+    "again": "Cast another",
+    "expires": "This photo disappears in 24 hours"
+  },
+  "error": {
+    "fileTooLarge": "File too large (max 10MB)",
+    "invalidType": "Only JPEG, PNG, GIF, WebP are supported",
+    "uploadFailed": "Upload failed. Please try again.",
+    "rateLimit": "Please wait a moment before trying again",
+    "banned": "Your access has been restricted"
+  },
+  "nav": {
+    "lang": "日本語"
+  }
+}
