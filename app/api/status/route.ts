@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { tryMatch } from '@/lib/matching'
+import { getPresignedUrl } from '@/lib/storage'
 
 export async function GET(req: NextRequest) {
   const bottleId = req.nextUrl.searchParams.get('bottleId')
@@ -16,79 +17,75 @@ export async function GET(req: NextRequest) {
     .from('bottles')
     .select('id, user_id, status, matched_bottle_id, country_code')
     .eq('id', bottleId)
-    .eq('user_id', userId) // ensure ownership
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (!bottle) {
     return NextResponse.json({ error: 'Bottle not found.' }, { status: 404 })
   }
 
+  // まだ待機中 → マッチング再試行してから返す
   if (bottle.status === 'waiting') {
-    // Try to match again in case a new bottle arrived
     await tryMatch(bottle.id, userId)
-
-    // Re-fetch
     const { data: refreshed } = await supabase
       .from('bottles')
-      .select('status, matched_bottle_id')
+      .select('status')
       .eq('id', bottleId)
       .single()
 
     if (refreshed?.status === 'waiting') {
       return NextResponse.json({ status: 'waiting' })
     }
-
     return NextResponse.json({ status: 'matched' })
   }
 
-  if (bottle.status === 'matched' && bottle.matched_bottle_id) {
-    // Fetch the matched bottle's image signed URL
+  // マッチング済み or 閲覧済み → 相手の画像の署名付きURLを返す
+  if (
+    (bottle.status === 'matched' || bottle.status === 'viewed') &&
+    bottle.matched_bottle_id
+  ) {
     const { data: matched } = await supabase
       .from('bottles')
-      .select('image_path, country_code')
+      .select('image_path, country_code, delete_ok')
       .eq('id', bottle.matched_bottle_id)
       .single()
 
-    if (!matched) {
-      return NextResponse.json({ status: 'matched', imageUrl: null })
+    if (!matched || !matched.image_path) {
+      return NextResponse.json({ status: bottle.status, imageUrl: null })
     }
 
-    const { data: signedUrl } = await supabase.storage
-      .from('bottle-images')
-      .createSignedUrl(matched.image_path, 60 * 60) // 1 hour
+    // 署名付きURL発行（1時間有効）
+    let imageUrl: string | null = null
+    try {
+      imageUrl = await getPresignedUrl(matched.image_path, 3600)
+    } catch (e) {
+      console.error('Presign error:', e)
+    }
 
-    // Mark as viewed
-    await supabase
-      .from('bottles')
-      .update({ status: 'viewed' })
-      .eq('id', bottleId)
+    // 初回閲覧時:
+    //   - 自分のボトルを viewed に更新
+    //   - 相手の画像に delete_ok フラグを立てる（受信者が開封 = 送信画像は削除OK）
+    if (bottle.status === 'matched') {
+      const now = new Date().toISOString()
+
+      await Promise.all([
+        supabase
+          .from('bottles')
+          .update({ status: 'viewed' })
+          .eq('id', bottle.id),
+
+        supabase
+          .from('bottles')
+          .update({ delete_ok: true, delete_ok_at: now })
+          .eq('id', bottle.matched_bottle_id),
+      ])
+    }
 
     return NextResponse.json({
       status: 'matched',
-      imageUrl: signedUrl?.signedUrl ?? null,
-      fromCountry: matched.country_code,
+      imageUrl,
+      fromCountry: matched.country_code ?? null,
     })
-  }
-
-  if (bottle.status === 'viewed' && bottle.matched_bottle_id) {
-    // Already viewed — re-generate signed URL
-    const { data: matched } = await supabase
-      .from('bottles')
-      .select('image_path, country_code')
-      .eq('id', bottle.matched_bottle_id)
-      .single()
-
-    if (matched) {
-      const { data: signedUrl } = await supabase.storage
-        .from('bottle-images')
-        .createSignedUrl(matched.image_path, 60 * 60)
-
-      return NextResponse.json({
-        status: 'viewed',
-        imageUrl: signedUrl?.signedUrl ?? null,
-        fromCountry: matched.country_code,
-      })
-    }
   }
 
   return NextResponse.json({ status: bottle.status })

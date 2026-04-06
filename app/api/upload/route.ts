@@ -5,16 +5,15 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { getClientIp, hashIp, getCountryCode } from '@/lib/ipUtils'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { tryMatch } from '@/lib/matching'
+import { uploadImage, deleteImage } from '@/lib/storage'
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-const BUCKET = 'bottle-images'
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers)
   const ipHash = hashIp(ip)
 
-  // Rate limit check
   const limit = await checkRateLimit(ipHash)
   if (!limit.allowed) {
     return NextResponse.json(
@@ -37,17 +36,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing image or userId.' }, { status: 400 })
   }
 
-  // Validate userId format (UUID)
   if (!/^[0-9a-f-]{36}$/i.test(userId)) {
     return NextResponse.json({ error: 'Invalid userId.' }, { status: 400 })
   }
 
-  // Validate file size
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json({ error: 'File too large. Max 10MB.' }, { status: 400 })
   }
 
-  // Validate MIME type
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json({ error: 'Invalid file type.' }, { status: 400 })
   }
@@ -55,11 +51,11 @@ export async function POST(req: NextRequest) {
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
-  // Sanitize image with sharp: strip EXIF, re-encode as JPEG
+  // EXIFを除去し、最大1920pxにリサイズ、JPEGに再エンコード（無害化）
   let sanitized: Buffer
   try {
     sanitized = await sharp(buffer)
-      .rotate() // auto-rotate based on EXIF (then strips EXIF)
+      .rotate()
       .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85, mozjpeg: true })
       .toBuffer()
@@ -67,42 +63,39 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid image file.' }, { status: 400 })
   }
 
-  const imagePath = `${userId}/${uuidv4()}.jpg`
-  const supabase = createServiceClient()
+  const imageKey = `${userId}/${uuidv4()}.jpg`
 
-  // Upload to Supabase Storage
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(imagePath, sanitized, { contentType: 'image/jpeg', upsert: false })
-
-  if (uploadError) {
-    console.error('Upload error:', uploadError)
+  // R2にアップロード
+  try {
+    await uploadImage(imageKey, sanitized)
+  } catch (e) {
+    console.error('R2 upload error:', e)
     return NextResponse.json({ error: 'Upload failed.' }, { status: 500 })
   }
 
-  // Get country code (non-blocking)
   const countryCode = await getCountryCode(ip)
+  const supabase = createServiceClient()
 
-  // Create bottle record
+  // DBにボトルレコード作成
   const { data: bottle, error: dbError } = await supabase
     .from('bottles')
     .insert({
       user_id: userId,
       ip_hash: ipHash,
       country_code: countryCode,
-      image_path: imagePath,
+      image_path: imageKey,
       status: 'waiting',
+      delete_ok: false,
     })
     .select('id')
     .single()
 
   if (dbError || !bottle) {
-    // Cleanup uploaded image
-    await supabase.storage.from(BUCKET).remove([imagePath])
+    await deleteImage(imageKey).catch(() => {})
     return NextResponse.json({ error: 'Database error.' }, { status: 500 })
   }
 
-  // Attempt immediate matching
+  // マッチング試行
   const matchedBottleId = await tryMatch(bottle.id, userId)
 
   return NextResponse.json({
