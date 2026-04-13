@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { OceanBackground } from '@/components/OceanBackground'
 import { BottleSVG } from '@/components/BottleSVG'
@@ -9,18 +9,38 @@ import { useTranslation } from '@/lib/useTranslation'
 import { getUserId } from '@/lib/anonymousUser'
 import Link from 'next/link'
 
+const SEED_MATCH_DELAY = 3000  // シードマッチ時の演出時間（ms）
+const POLL_INTERVAL = 5000     // 通常ポーリング間隔（ms）
+
 function WaitingContent() {
   const { t } = useTranslation()
   const router = useRouter()
   const params = useSearchParams()
   const bottleId = params.get('bottleId')
   const alreadyMatched = params.get('matched') === 'true'
+  const isSeedMatch = params.get('seed') === 'true'
 
   const [dots, setDots] = useState('')
   const [showDriftBottle, setShowDriftBottle] = useState(false)
+  const [countdown, setCountdown] = useState<number | null>(null)
+  const navigatingRef = useRef(false)
+
+  const navigateToReceive = useCallback(
+    (imageUrl: string, fromCountry: string) => {
+      if (navigatingRef.current) return
+      navigatingRef.current = true
+      setShowDriftBottle(true)
+      setTimeout(() => {
+        router.push(
+          `/receive?bottleId=${bottleId}&imageUrl=${encodeURIComponent(imageUrl)}&from=${fromCountry}`
+        )
+      }, 2500)
+    },
+    [bottleId, router]
+  )
 
   const checkStatus = useCallback(async () => {
-    if (!bottleId) return
+    if (!bottleId || navigatingRef.current) return
     const userId = getUserId()
     if (!userId) return
 
@@ -30,27 +50,41 @@ function WaitingContent() {
       const data = await res.json()
 
       if (data.status === 'matched' || data.status === 'viewed') {
-        setShowDriftBottle(true)
-        setTimeout(() => {
-          router.push(
-            `/receive?bottleId=${bottleId}&imageUrl=${encodeURIComponent(data.imageUrl || '')}&from=${data.fromCountry || ''}`
-          )
-        }, 2500)
+        navigateToReceive(data.imageUrl || '', data.fromCountry || '')
       }
     } catch {
-      // Network error, retry later
+      // ネットワークエラー、次回再試行
     }
-  }, [bottleId, router])
+  }, [bottleId, navigateToReceive])
 
+  // シードマッチ即時: カウントダウン後に checkStatus
   useEffect(() => {
-    if (alreadyMatched) {
-      checkStatus()
-      return
-    }
-    const interval = setInterval(checkStatus, 5000)
+    if (!alreadyMatched || !isSeedMatch) return
+    let remaining = Math.ceil(SEED_MATCH_DELAY / 1000)
+    setCountdown(remaining)
+    const tick = setInterval(() => {
+      remaining -= 1
+      setCountdown(remaining)
+      if (remaining <= 0) clearInterval(tick)
+    }, 1000)
+    const timer = setTimeout(() => checkStatus(), SEED_MATCH_DELAY)
+    return () => { clearInterval(tick); clearTimeout(timer) }
+  }, [alreadyMatched, isSeedMatch, checkStatus])
+
+  // リアルマッチ即時
+  useEffect(() => {
+    if (!alreadyMatched || isSeedMatch) return
+    checkStatus()
+  }, [alreadyMatched, isSeedMatch, checkStatus])
+
+  // 通常ポーリング（マッチ未成立時）
+  useEffect(() => {
+    if (alreadyMatched) return
+    const interval = setInterval(checkStatus, POLL_INTERVAL)
     return () => clearInterval(interval)
   }, [alreadyMatched, checkStatus])
 
+  // 待機ドット
   useEffect(() => {
     const interval = setInterval(() => {
       setDots((d) => (d.length >= 3 ? '' : d + '.'))
@@ -61,7 +95,10 @@ function WaitingContent() {
   if (!bottleId) {
     return (
       <div className="relative z-10 flex flex-col items-center text-center">
-        <p style={{ color: 'var(--sand-dark)' }}>Invalid state. <Link href="/send" className="underline">Go back</Link></p>
+        <p style={{ color: 'var(--sand-dark)' }}>
+          Invalid state.{' '}
+          <Link href="/send" className="underline">Go back</Link>
+        </p>
       </div>
     )
   }
@@ -75,29 +112,20 @@ function WaitingContent() {
         {t('waiting.title')}
       </h1>
 
-      {/* Bottles drifting */}
+      {/* ボトルアニメーション */}
       <div className="relative w-64 h-64 my-8">
-        {/* Your bottle drifting away */}
-        <div
-          className="absolute"
-          style={{ left: '10%', top: '30%' }}
-        >
+        <div className="absolute" style={{ left: '10%', top: '30%' }}>
           <div className="animate-bob opacity-60">
             <BottleSVG hasImage={true} size={50} />
           </div>
         </div>
 
-        {/* Incoming bottle (shows when matched) */}
         {showDriftBottle && (
-          <div
-            className="absolute animate-drift-in"
-            style={{ right: '10%', top: '20%' }}
-          >
+          <div className="absolute animate-drift-in" style={{ right: '10%', top: '20%' }}>
             <BottleSVG hasImage={true} size={60} />
           </div>
         )}
 
-        {/* Wave lines */}
         <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 256 256">
           {[100, 130, 160, 190].map((y, i) => (
             <path
@@ -111,21 +139,35 @@ function WaitingContent() {
         </svg>
       </div>
 
-      <p
-        className="text-base mb-2"
-        style={{ color: 'var(--sand)', fontFamily: 'Georgia, serif' }}
-      >
-        {showDriftBottle ? '🎉 ' : ''}{t('waiting.message')}{dots}
-      </p>
+      {/* シードマッチ：カウントダウン表示 */}
+      {isSeedMatch && countdown !== null && countdown > 0 ? (
+        <>
+          <p className="text-base mb-1" style={{ color: 'var(--sand)', fontFamily: 'Georgia, serif' }}>
+            {t('waiting.message')}
+          </p>
+          <p
+            className="text-4xl font-light mt-2"
+            style={{ color: 'var(--ocean-foam)', fontFamily: 'Georgia, serif' }}
+          >
+            {countdown}
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-base mb-2" style={{ color: 'var(--sand)', fontFamily: 'Georgia, serif' }}>
+            {showDriftBottle ? '🎉 ' : ''}{t('waiting.message')}{dots}
+          </p>
+          {!alreadyMatched && (
+            <p
+              className="text-sm max-w-xs leading-relaxed mt-2"
+              style={{ color: 'var(--sand-dark)', opacity: 0.6 }}
+            >
+              {t('waiting.sub')}
+            </p>
+          )}
+        </>
+      )}
 
-      <p
-        className="text-sm max-w-xs leading-relaxed mt-2"
-        style={{ color: 'var(--sand-dark)', opacity: 0.6 }}
-      >
-        {t('waiting.sub')}
-      </p>
-
-      {/* Subtle loading indicator */}
       <div className="flex gap-2 mt-8">
         {[0, 1, 2, 3, 4].map((i) => (
           <div

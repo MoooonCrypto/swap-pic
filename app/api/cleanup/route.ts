@@ -12,9 +12,9 @@ export async function POST(req: NextRequest) {
 
   const db = getDb()
 
-  // delete_ok = 1 かつ未削除のボトルを取得
+  // delete_ok = 1 かつ未削除かつシード以外のボトルを取得
   const result = await db.execute({
-    sql: `SELECT id, image_path FROM bottles WHERE delete_ok = 1 AND status != 'deleted'`,
+    sql: `SELECT id, image_path FROM bottles WHERE delete_ok = 1 AND status != 'deleted' AND is_seed = 0`,
     args: [],
   })
 

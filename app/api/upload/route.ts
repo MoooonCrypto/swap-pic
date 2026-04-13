@@ -89,11 +89,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Database error.' }, { status: 500 })
   }
 
-  const matchedBottleId = await tryMatch(bottleId, userId)
+  const matchResult = await tryMatch(bottleId, userId)
 
   return NextResponse.json({
     bottleId,
-    matched: !!matchedBottleId,
+    matched: !!matchResult,
+    isSeedMatch: matchResult?.isSeed ?? false,
     countryCode,
   })
 }
