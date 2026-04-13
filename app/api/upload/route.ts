@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import sharp from 'sharp'
 import { v4 as uuidv4 } from 'uuid'
-import { createServiceClient } from '@/lib/supabase/server'
+import { getDb } from '@/lib/db'
 import { getClientIp, hashIp, getCountryCode } from '@/lib/ipUtils'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { tryMatch } from '@/lib/matching'
 import { uploadImage, deleteImage } from '@/lib/storage'
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 
 export async function POST(req: NextRequest) {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
-  // EXIFを除去し、最大1920pxにリサイズ、JPEGに再エンコード（無害化）
+  // EXIFを除去・リサイズ・JPEG再エンコード（無害化）
   let sanitized: Buffer
   try {
     sanitized = await sharp(buffer)
@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
 
   const imageKey = `${userId}/${uuidv4()}.jpg`
 
-  // R2にアップロード
   try {
     await uploadImage(imageKey, sanitized)
   } catch (e) {
@@ -74,32 +73,26 @@ export async function POST(req: NextRequest) {
   }
 
   const countryCode = await getCountryCode(ip)
-  const supabase = createServiceClient()
+  const bottleId = uuidv4()
+  const now = new Date().toISOString()
+  const db = getDb()
 
-  // DBにボトルレコード作成
-  const { data: bottle, error: dbError } = await supabase
-    .from('bottles')
-    .insert({
-      user_id: userId,
-      ip_hash: ipHash,
-      country_code: countryCode,
-      image_path: imageKey,
-      status: 'waiting',
-      delete_ok: false,
+  try {
+    await db.execute({
+      sql: `INSERT INTO bottles (id, user_id, ip_hash, country_code, image_path, status, delete_ok, created_at)
+            VALUES (?, ?, ?, ?, ?, 'waiting', 0, ?)`,
+      args: [bottleId, userId, ipHash, countryCode ?? null, imageKey, now],
     })
-    .select('id')
-    .single()
-
-  if (dbError || !bottle) {
+  } catch (e) {
+    console.error('DB insert error:', e)
     await deleteImage(imageKey).catch(() => {})
     return NextResponse.json({ error: 'Database error.' }, { status: 500 })
   }
 
-  // マッチング試行
-  const matchedBottleId = await tryMatch(bottle.id, userId)
+  const matchedBottleId = await tryMatch(bottleId, userId)
 
   return NextResponse.json({
-    bottleId: bottle.id,
+    bottleId,
     matched: !!matchedBottleId,
     countryCode,
   })

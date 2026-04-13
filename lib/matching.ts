@@ -1,47 +1,39 @@
-import { createServiceClient } from './supabase/server'
+import { getDb } from './db'
 
-// Attempt to match the given bottle with a waiting bottle from another user.
-// Returns matched bottle id if successful, null if no match yet.
 export async function tryMatch(bottleId: string, userId: string): Promise<string | null> {
-  const supabase = createServiceClient()
-
-  // Find oldest waiting bottle from a different user
-  const { data: candidate } = await supabase
-    .from('bottles')
-    .select('id')
-    .eq('status', 'waiting')
-    .neq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  if (!candidate) return null
-
+  const db = getDb()
   const now = new Date().toISOString()
 
-  // Update both bottles atomically (best-effort with two updates)
-  const { error: e1 } = await supabase
-    .from('bottles')
-    .update({ status: 'matched', matched_bottle_id: candidate.id, matched_at: now })
-    .eq('id', bottleId)
-    .eq('status', 'waiting')
+  // 自分以外の最古のwaiting ボトルを探す
+  const result = await db.execute({
+    sql: `SELECT id FROM bottles
+          WHERE status = 'waiting' AND user_id != ?
+          ORDER BY created_at ASC
+          LIMIT 1`,
+    args: [userId],
+  })
 
-  if (e1) return null
+  if (result.rows.length === 0) return null
 
-  const { error: e2 } = await supabase
-    .from('bottles')
-    .update({ status: 'matched', matched_bottle_id: bottleId, matched_at: now })
-    .eq('id', candidate.id)
-    .eq('status', 'waiting')
+  const candidateId = result.rows[0].id as string
 
-  if (e2) {
-    // Rollback our update
-    await supabase
-      .from('bottles')
-      .update({ status: 'waiting', matched_bottle_id: null, matched_at: null })
-      .eq('id', bottleId)
+  // 両ボトルをまとめて matched に更新（batch で原子的に実行）
+  try {
+    await db.batch([
+      {
+        sql: `UPDATE bottles SET status = 'matched', matched_bottle_id = ?, matched_at = ?
+              WHERE id = ? AND status = 'waiting'`,
+        args: [candidateId, now, bottleId],
+      },
+      {
+        sql: `UPDATE bottles SET status = 'matched', matched_bottle_id = ?, matched_at = ?
+              WHERE id = ? AND status = 'waiting'`,
+        args: [bottleId, now, candidateId],
+      },
+    ])
+  } catch {
     return null
   }
 
-  return candidate.id
+  return candidateId
 }
