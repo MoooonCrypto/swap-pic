@@ -82,9 +82,7 @@ export default function SendPage() {
 
       // Wait for send animation then navigate
       await new Promise((r) => setTimeout(r, 1800))
-      router.push(
-        `/waiting?bottleId=${data.bottleId}&matched=${data.matched}&seed=${data.isSeedMatch ?? false}`
-      )
+      router.push(`/waiting?bottleId=${data.bottleId}`)
     } catch {
       setError(t('error.uploadFailed'))
       setStage('preview')

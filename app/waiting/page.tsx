@@ -9,180 +9,229 @@ import { useTranslation } from '@/lib/useTranslation'
 import { getUserId } from '@/lib/anonymousUser'
 import Link from 'next/link'
 
-const SEED_MATCH_DELAY = 3000  // シードマッチ時の演出時間（ms）
-const POLL_INTERVAL = 5000     // 通常ポーリング間隔（ms）
+type Phase = 'searching' | 'matched' | 'timeout' | 'error'
+
+const MAX_WAIT = 10
 
 function WaitingContent() {
   const { t } = useTranslation()
   const router = useRouter()
   const params = useSearchParams()
   const bottleId = params.get('bottleId')
-  const alreadyMatched = params.get('matched') === 'true'
-  const isSeedMatch = params.get('seed') === 'true'
 
-  const [dots, setDots] = useState('')
-  const [showDriftBottle, setShowDriftBottle] = useState(false)
-  const [countdown, setCountdown] = useState<number | null>(null)
+  const [phase, setPhase] = useState<Phase>('searching')
+  const [elapsed, setElapsed] = useState(0)
+  const [msgKey, setMsgKey] = useState(0)
   const navigatingRef = useRef(false)
+
+  const searchMessages = [
+    t('waiting.search1'),
+    t('waiting.search2'),
+    t('waiting.search3'),
+  ]
 
   const navigateToReceive = useCallback(
     (imageUrl: string, fromCountry: string) => {
       if (navigatingRef.current) return
       navigatingRef.current = true
-      setShowDriftBottle(true)
+      setPhase('matched')
       setTimeout(() => {
         router.push(
           `/receive?bottleId=${bottleId}&imageUrl=${encodeURIComponent(imageUrl)}&from=${fromCountry}`
         )
-      }, 2500)
+      }, 2200)
     },
     [bottleId, router]
   )
 
-  const checkStatus = useCallback(async () => {
-    if (!bottleId || navigatingRef.current) return
+  // SSE接続
+  useEffect(() => {
+    if (!bottleId) return
     const userId = getUserId()
     if (!userId) return
 
-    try {
-      const res = await fetch(`/api/status?bottleId=${bottleId}&userId=${userId}`)
-      if (!res.ok) return
-      const data = await res.json()
+    const es = new EventSource(`/api/stream?bottleId=${bottleId}&userId=${userId}`)
 
-      if (data.status === 'matched' || data.status === 'viewed') {
-        navigateToReceive(data.imageUrl || '', data.fromCountry || '')
-      }
-    } catch {
-      // ネットワークエラー、次回再試行
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        if (data.status === 'waiting') {
+          setElapsed(data.elapsed ?? 0)
+        } else if (data.status === 'matched') {
+          es.close()
+          navigateToReceive(data.imageUrl || '', data.fromCountry || '')
+        } else if (data.status === 'timeout') {
+          es.close()
+          setPhase('timeout')
+        } else if (data.status === 'error') {
+          es.close()
+          setPhase('error')
+        }
+      } catch {}
     }
+
+    es.onerror = () => {
+      es.close()
+    }
+
+    return () => es.close()
   }, [bottleId, navigateToReceive])
 
-  // シードマッチ即時: カウントダウン後に checkStatus
+  // メッセージを2.5秒ごとにローテーション
   useEffect(() => {
-    if (!alreadyMatched || !isSeedMatch) return
-    let remaining = Math.ceil(SEED_MATCH_DELAY / 1000)
-    setCountdown(remaining)
-    const tick = setInterval(() => {
-      remaining -= 1
-      setCountdown(remaining)
-      if (remaining <= 0) clearInterval(tick)
-    }, 1000)
-    const timer = setTimeout(() => checkStatus(), SEED_MATCH_DELAY)
-    return () => { clearInterval(tick); clearTimeout(timer) }
-  }, [alreadyMatched, isSeedMatch, checkStatus])
-
-  // リアルマッチ即時
-  useEffect(() => {
-    if (!alreadyMatched || isSeedMatch) return
-    checkStatus()
-  }, [alreadyMatched, isSeedMatch, checkStatus])
-
-  // 通常ポーリング（マッチ未成立時）
-  useEffect(() => {
-    if (alreadyMatched) return
-    const interval = setInterval(checkStatus, POLL_INTERVAL)
+    if (phase !== 'searching') return
+    const interval = setInterval(() => setMsgKey((k) => k + 1), 2500)
     return () => clearInterval(interval)
-  }, [alreadyMatched, checkStatus])
-
-  // 待機ドット
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((d) => (d.length >= 3 ? '' : d + '.'))
-    }, 500)
-    return () => clearInterval(interval)
-  }, [])
+  }, [phase])
 
   if (!bottleId) {
     return (
-      <div className="relative z-10 flex flex-col items-center text-center">
+      <div className="relative z-10 text-center">
         <p style={{ color: 'var(--sand-dark)' }}>
           Invalid state.{' '}
-          <Link href="/send" className="underline">Go back</Link>
+          <Link href="/send" className="underline">
+            Go back
+          </Link>
         </p>
       </div>
     )
   }
 
   return (
-    <div className="relative z-10 flex flex-col items-center text-center max-w-lg mx-auto mt-16">
-      <h1
-        className="text-2xl md:text-3xl font-light mb-4 tracking-wide"
-        style={{ color: 'var(--sand)', letterSpacing: '0.08em' }}
+    <>
+      {/* バックグラウンドを漂うボトル */}
+      <div
+        className="fixed inset-0 pointer-events-none overflow-hidden"
+        style={{ zIndex: 1 }}
+        aria-hidden="true"
       >
-        {t('waiting.title')}
-      </h1>
+        <div className="absolute animate-drift-bg-right" style={{ top: '22%', animationDelay: '0s' }}>
+          <BottleSVG hasImage={false} size={34} />
+        </div>
+        <div className="absolute animate-drift-bg-left" style={{ top: '60%', animationDelay: '7s' }}>
+          <BottleSVG hasImage={true} size={27} />
+        </div>
+        <div className="absolute animate-drift-bg-right" style={{ top: '42%', animationDelay: '13s' }}>
+          <BottleSVG hasImage={false} size={22} />
+        </div>
+      </div>
 
-      {/* ボトルアニメーション */}
-      <div className="relative w-64 h-64 my-8">
-        <div className="absolute" style={{ left: '10%', top: '30%' }}>
-          <div className="animate-bob opacity-60">
-            <BottleSVG hasImage={true} size={50} />
+      <div
+        className="relative flex flex-col items-center text-center max-w-lg mx-auto mt-16 px-4"
+        style={{ zIndex: 10 }}
+      >
+        <h1
+          className="text-2xl md:text-3xl font-light mb-2 tracking-wide"
+          style={{ color: 'var(--sand)', letterSpacing: '0.08em' }}
+        >
+          {t('waiting.title')}
+        </h1>
+
+        {/* ソナー + ボトル */}
+        <div className="relative w-44 h-44 my-8 flex items-center justify-center">
+          {phase === 'searching' &&
+            [0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="absolute inset-0 rounded-full animate-sonar"
+                style={{
+                  border: '1px solid rgba(78,205,196,0.5)',
+                  animationDelay: `${i * 0.7}s`,
+                }}
+              />
+            ))}
+
+          <div className={phase === 'searching' ? 'animate-bob' : 'animate-float'}>
+            <BottleSVG hasImage={true} size={58} showCork={true} />
           </div>
+
+          {phase === 'matched' && (
+            <div className="absolute animate-drift-in" style={{ right: '-30%', top: '15%' }}>
+              <BottleSVG hasImage={true} size={48} />
+            </div>
+          )}
         </div>
 
-        {showDriftBottle && (
-          <div className="absolute animate-drift-in" style={{ right: '10%', top: '20%' }}>
-            <BottleSVG hasImage={true} size={60} />
+        {/* プログレスバー（10マス） */}
+        {phase === 'searching' && (
+          <div className="w-full max-w-[200px] mb-6">
+            <div className="flex gap-1">
+              {Array.from({ length: MAX_WAIT }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-0.5 flex-1 rounded-full transition-all duration-700"
+                  style={{
+                    background:
+                      i < elapsed ? 'rgba(78,205,196,0.8)' : 'rgba(78,205,196,0.15)',
+                  }}
+                />
+              ))}
+            </div>
           </div>
         )}
 
-        <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 256 256">
-          {[100, 130, 160, 190].map((y, i) => (
-            <path
-              key={i}
-              d={`M0,${y} Q64,${y - 10} 128,${y} Q192,${y + 10} 256,${y}`}
-              stroke="rgba(78,205,196,0.5)"
-              strokeWidth="1"
-              fill="none"
-            />
-          ))}
-        </svg>
-      </div>
-
-      {/* シードマッチ：カウントダウン表示 */}
-      {isSeedMatch && countdown !== null && countdown > 0 ? (
-        <>
-          <p className="text-base mb-1" style={{ color: 'var(--sand)', fontFamily: 'Georgia, serif' }}>
-            {t('waiting.message')}
-          </p>
+        {/* ローテーションメッセージ */}
+        {phase === 'searching' && (
           <p
-            className="text-4xl font-light mt-2"
+            key={msgKey}
+            className="text-base animate-fade-up"
+            style={{
+              color: 'var(--sand)',
+              fontFamily: 'Georgia, serif',
+              minHeight: '1.5rem',
+            }}
+          >
+            {searchMessages[msgKey % searchMessages.length]}
+          </p>
+        )}
+
+        {phase === 'matched' && (
+          <p
+            className="text-lg"
             style={{ color: 'var(--ocean-foam)', fontFamily: 'Georgia, serif' }}
           >
-            {countdown}
+            {t('waiting.found')}
           </p>
-        </>
-      ) : (
-        <>
-          <p className="text-base mb-2" style={{ color: 'var(--sand)', fontFamily: 'Georgia, serif' }}>
-            {showDriftBottle ? '🎉 ' : ''}{t('waiting.message')}{dots}
-          </p>
-          {!alreadyMatched && (
-            <p
-              className="text-sm max-w-xs leading-relaxed mt-2"
-              style={{ color: 'var(--sand-dark)', opacity: 0.6 }}
-            >
-              {t('waiting.sub')}
-            </p>
-          )}
-        </>
-      )}
+        )}
 
-      <div className="flex gap-2 mt-8">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="w-1.5 h-1.5 rounded-full"
-            style={{
-              background: 'var(--ocean-foam)',
-              opacity: 0.3,
-              animation: `pulse-glow ${1 + i * 0.2}s ease-in-out infinite`,
-              animationDelay: `${i * 0.15}s`,
-            }}
-          />
-        ))}
+        {(phase === 'timeout' || phase === 'error') && (
+          <div className="flex flex-col items-center gap-4 mt-2">
+            <p className="text-sm" style={{ color: 'var(--sand-dark)' }}>
+              {t('waiting.timeout')}
+            </p>
+            <Link
+              href="/send"
+              className="px-5 py-2 text-sm rounded transition-opacity hover:opacity-80"
+              style={{
+                background: 'rgba(78,205,196,0.1)',
+                border: '1px solid rgba(78,205,196,0.3)',
+                color: 'var(--ocean-foam)',
+              }}
+            >
+              {t('waiting.retry')}
+            </Link>
+          </div>
+        )}
+
+        {/* パルスドット */}
+        {phase === 'searching' && (
+          <div className="flex gap-2 mt-8">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  background: 'var(--ocean-foam)',
+                  opacity: 0.3,
+                  animation: `pulse-glow ${1 + i * 0.2}s ease-in-out infinite`,
+                  animationDelay: `${i * 0.15}s`,
+                }}
+              />
+            ))}
+          </div>
+        )}
       </div>
-    </div>
+    </>
   )
 }
 

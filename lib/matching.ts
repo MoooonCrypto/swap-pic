@@ -2,8 +2,10 @@ import { getDb } from './db'
 
 export async function tryMatch(
   bottleId: string,
-  userId: string
+  userId: string,
+  options: { allowSeedFallback?: boolean } = {}
 ): Promise<{ matchedId: string; isSeed: boolean } | null> {
+  const { allowSeedFallback = true } = options
   const db = getDb()
   const now = new Date().toISOString()
 
@@ -36,7 +38,9 @@ export async function tryMatch(
     }
   }
 
-  // 2. リアルマッチなし → シードボトルにフォールバック
+  // 2. リアルマッチなし → シードボトルにフォールバック（許可時のみ）
+  if (!allowSeedFallback) return null
+
   const seedResult = await db.execute({
     sql: `SELECT id FROM bottles
           WHERE is_seed = 1 AND status = 'waiting'

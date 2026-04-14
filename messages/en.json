@@ -27,7 +27,13 @@
     "title": "Your bottle is drifting...",
     "message": "Waiting for someone's bottle to arrive…",
     "sub": "When another user casts their bottle, it will drift to you.\nKeep this page open.",
-    "checking": "Checking..."
+    "checking": "Checking...",
+    "search1": "Your bottle is adrift on the sea…",
+    "search2": "Searching for a stranger somewhere…",
+    "search3": "Somewhere across the waves…",
+    "found": "Someone has been found!",
+    "timeout": "No one found nearby. Try again?",
+    "retry": "Try again"
   },
   "receive": {
     "title": "A bottle has arrived!",

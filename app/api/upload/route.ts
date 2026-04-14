@@ -89,7 +89,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Database error.' }, { status: 500 })
   }
 
-  const matchResult = await tryMatch(bottleId, userId)
+  // アップロード時はリアルマッチのみ試行。シードフォールバックはSSE側で10秒後に行う
+  const matchResult = await tryMatch(bottleId, userId, { allowSeedFallback: false })
 
   return NextResponse.json({
     bottleId,
