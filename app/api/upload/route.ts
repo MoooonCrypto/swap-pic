@@ -52,9 +52,10 @@ export async function POST(req: NextRequest) {
   const buffer = Buffer.from(bytes)
 
   // EXIFを除去・リサイズ・JPEG再エンコード（無害化）
+  // limitInputPixels: 展開爆弾対策（50MP ≈ 7071×7071px 相当）
   let sanitized: Buffer
   try {
-    sanitized = await sharp(buffer)
+    sanitized = await sharp(buffer, { limitInputPixels: 50_000_000 })
       .rotate()
       .resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 85, mozjpeg: true })
