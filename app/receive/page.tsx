@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { OceanBackground } from '@/components/OceanBackground'
 import { BottleSVG } from '@/components/BottleSVG'
@@ -15,11 +15,26 @@ type Stage = 'arrived' | 'opening' | 'revealed'
 function ReceiveContent() {
   const { t } = useTranslation()
   const params = useSearchParams()
+  const bottleId = params.get('bottleId') || ''
   const imageUrl = params.get('imageUrl') || ''
   const fromCountry = params.get('from') || ''
 
   const [stage, setStage] = useState<Stage>('arrived')
   const [showBottle, setShowBottle] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = useCallback(async () => {
+    const shareUrl = `${window.location.origin}/view/${bottleId}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t('share.title'), text: t('share.text'), url: shareUrl })
+      } catch {}
+    } else {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }, [bottleId, t])
 
   useEffect(() => {
     // Bottle drifts in
@@ -120,11 +135,25 @@ function ReceiveContent() {
             ⏱ {t('receive.expires')}
           </p>
 
-          {/* Action */}
-          <div className="mt-6">
+          {/* Actions */}
+          <div className="mt-6 flex flex-col items-center gap-3">
+            {bottleId && (
+              <button
+                onClick={handleShare}
+                className="w-full max-w-[240px] px-6 py-2.5 text-sm tracking-widest rounded transition-all duration-300 hover:scale-105"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(13,124,114,0.9), rgba(78,205,196,0.7))',
+                  border: '1px solid rgba(78,205,196,0.5)',
+                  color: 'var(--sand)',
+                  letterSpacing: '0.15em',
+                }}
+              >
+                {copied ? t('share.copied') : t('share.button')}
+              </button>
+            )}
             <Link
               href="/send"
-              className="inline-block px-8 py-3 text-sm tracking-widest rounded transition-all duration-300 hover:scale-105"
+              className="inline-block px-8 py-2.5 text-sm tracking-widest rounded transition-all duration-300 hover:scale-105"
               style={{
                 background: 'rgba(14,52,96,0.6)',
                 border: '1px solid rgba(78,205,196,0.3)',
@@ -135,6 +164,14 @@ function ReceiveContent() {
               {t('receive.again')}
             </Link>
           </div>
+
+          {/* Policy */}
+          <p
+            className="mt-6 text-xs max-w-xs text-center leading-relaxed"
+            style={{ color: 'var(--sand-dark)', opacity: 0.4 }}
+          >
+            {t('share.policy')}
+          </p>
         </div>
       )}
 

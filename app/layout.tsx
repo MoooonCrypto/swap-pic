@@ -7,6 +7,10 @@ import { getLocaleFromCookie, type Locale } from '@/lib/i18n'
 export const metadata: Metadata = {
   title: 'ながれびん / Drift Pic',
   description: '匿名で写真を交換する / Anonymous photo exchange',
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  ),
 }
 
 async function getMessages(locale: Locale) {

@@ -21,7 +21,7 @@
     "change": "Change photo",
     "sendBtn": "Cast to sea",
     "sending": "Casting...",
-    "rules": "※ Do not upload personal information or inappropriate content."
+    "rules": "※ Do not upload personal information or inappropriate content. You are solely responsible for your uploaded images. Images you send may be freely shared by the recipient using the share feature."
   },
   "waiting": {
     "title": "Your bottle is drifting...",
@@ -50,6 +50,13 @@
     "uploadFailed": "Upload failed. Please try again.",
     "rateLimit": "Please wait a moment before trying again",
     "banned": "Your access has been restricted"
+  },
+  "share": {
+    "button": "Share",
+    "copied": "Copied!",
+    "title": "A photo arrived from a stranger",
+    "text": "I received a photo from a stranger on Nagare-bin. Cast your own bottle!",
+    "policy": "Photos received via Nagare-bin may be freely shared using the share feature. The uploader is solely responsible for the content of any uploaded image."
   },
   "nav": {
     "lang": "日本語"
