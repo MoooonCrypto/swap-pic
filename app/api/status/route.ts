@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { tryMatch } from '@/lib/matching'
 import { getPresignedUrl } from '@/lib/storage'
 
 export async function GET(req: NextRequest) {
@@ -26,17 +25,8 @@ export async function GET(req: NextRequest) {
   const bottle = result.rows[0]
   const status = bottle.status as string
 
-  // 待機中 → マッチング再試行
   if (status === 'waiting') {
-    await tryMatch(bottleId, userId)
-    const refreshed = await db.execute({
-      sql: `SELECT status FROM bottles WHERE id = ? LIMIT 1`,
-      args: [bottleId],
-    })
-    if (refreshed.rows[0]?.status === 'waiting') {
-      return NextResponse.json({ status: 'waiting' })
-    }
-    return NextResponse.json({ status: 'matched' })
+    return NextResponse.json({ status: 'waiting' })
   }
 
   // マッチング済み or 閲覧済み → 相手の画像を返す
@@ -65,15 +55,12 @@ export async function GET(req: NextRequest) {
     if (status === 'matched') {
       const isSeed = Number(matched.is_seed) === 1
       const now = new Date().toISOString()
-
       if (isSeed) {
-        // シード画像は delete_ok を立てない（削除しない）
         await db.execute({
           sql: `UPDATE bottles SET status = 'viewed' WHERE id = ?`,
           args: [bottleId],
         })
       } else {
-        // リアルマッチ: 相手の画像に delete_ok フラグ
         await db.batch([
           {
             sql: `UPDATE bottles SET status = 'viewed' WHERE id = ?`,
@@ -96,3 +83,4 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ status })
 }
+

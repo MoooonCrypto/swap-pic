@@ -32,8 +32,10 @@
     "search2": "Searching for a stranger somewhere…",
     "search3": "Somewhere across the waves…",
     "found": "Someone has been found!",
-    "timeout": "No one found nearby. Try again?",
-    "retry": "Try again"
+    "timeout": "Connection error.",
+    "floating": "Your bottle is drifting on the sea…",
+    "floatingSub": "We'll let you know when someone finds it. Check back anytime.",
+    "goHome": "Back to home"
   },
   "receive": {
     "title": "A bottle has arrived!",

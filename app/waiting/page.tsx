@@ -6,10 +6,10 @@ import { OceanBackground } from '@/components/OceanBackground'
 import { BottleSVG } from '@/components/BottleSVG'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslation } from '@/lib/useTranslation'
-import { getUserId } from '@/lib/anonymousUser'
+import { getUserId, savePendingBottle } from '@/lib/anonymousUser'
 import Link from 'next/link'
 
-type Phase = 'searching' | 'matched' | 'timeout' | 'error'
+type Phase = 'searching' | 'matched' | 'floating' | 'error'
 
 const MAX_WAIT = 10
 
@@ -60,9 +60,10 @@ function WaitingContent() {
         } else if (data.status === 'matched') {
           es.close()
           navigateToReceive(data.imageUrl || '', data.fromCountry || '')
-        } else if (data.status === 'timeout') {
+        } else if (data.status === 'no_match') {
           es.close()
-          setPhase('timeout')
+          savePendingBottle(bottleId, userId)
+          setPhase('floating')
         } else if (data.status === 'error') {
           es.close()
           setPhase('error')
@@ -194,23 +195,38 @@ function WaitingContent() {
           </p>
         )}
 
-        {(phase === 'timeout' || phase === 'error') && (
-          <div className="flex flex-col items-center gap-4 mt-2">
-            <p className="text-sm" style={{ color: 'var(--sand-dark)' }}>
-              {t('waiting.timeout')}
+        {phase === 'floating' && (
+          <div className="flex flex-col items-center gap-3 mt-2">
+            <p
+              className="text-base"
+              style={{ color: 'var(--sand)', fontFamily: 'Georgia, serif' }}
+            >
+              {t('waiting.floating')}
+            </p>
+            <p
+              className="text-sm max-w-xs leading-relaxed text-center"
+              style={{ color: 'var(--sand-dark)', opacity: 0.6 }}
+            >
+              {t('waiting.floatingSub')}
             </p>
             <Link
-              href="/send"
-              className="px-5 py-2 text-sm rounded transition-opacity hover:opacity-80"
+              href="/"
+              className="mt-2 px-5 py-2 text-sm rounded transition-opacity hover:opacity-80"
               style={{
                 background: 'rgba(78,205,196,0.1)',
                 border: '1px solid rgba(78,205,196,0.3)',
                 color: 'var(--ocean-foam)',
               }}
             >
-              {t('waiting.retry')}
+              {t('waiting.goHome')}
             </Link>
           </div>
+        )}
+
+        {phase === 'error' && (
+          <p className="text-sm mt-2" style={{ color: 'var(--sand-dark)', opacity: 0.6 }}>
+            {t('waiting.timeout')}
+          </p>
         )}
 
         {/* パルスドット */}

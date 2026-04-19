@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import './globals.css'
 import { LocaleProvider } from '@/components/LocaleProvider'
+import { PendingBottleBanner } from '@/components/PendingBottleBanner'
 import { getLocaleFromCookie, type Locale } from '@/lib/i18n'
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-full flex flex-col">
         <LocaleProvider initialLocale={locale} initialMessages={messages}>
           {children}
+          <PendingBottleBanner />
         </LocaleProvider>
       </body>
     </html>
