@@ -31,8 +31,7 @@ export async function GET(req: NextRequest) {
           const result = await db.execute({
             sql: `SELECT b.status, b.matched_bottle_id,
                          mb.image_path   AS matched_image,
-                         mb.country_code AS from_country,
-                         mb.is_seed      AS matched_is_seed
+                         mb.country_code AS from_country
                   FROM bottles b
                   LEFT JOIN bottles mb ON mb.id = b.matched_bottle_id
                   WHERE b.id = ? AND b.user_id = ? LIMIT 1`,
@@ -50,25 +49,17 @@ export async function GET(req: NextRequest) {
           // マッチング済み → 初回処理 + イベント送信
           if ((status === 'matched' || status === 'viewed') && row.matched_bottle_id) {
             if (status === 'matched') {
-              const isSeed = Number(row.matched_is_seed) === 1
               const now = new Date().toISOString()
-              if (isSeed) {
-                await db.execute({
+              await db.batch([
+                {
                   sql: `UPDATE bottles SET status = 'viewed' WHERE id = ?`,
                   args: [bottleId],
-                })
-              } else {
-                await db.batch([
-                  {
-                    sql: `UPDATE bottles SET status = 'viewed' WHERE id = ?`,
-                    args: [bottleId],
-                  },
-                  {
-                    sql: `UPDATE bottles SET delete_ok = 1, delete_ok_at = ? WHERE id = ?`,
-                    args: [now, row.matched_bottle_id as string],
-                  },
-                ])
-              }
+                },
+                {
+                  sql: `UPDATE bottles SET delete_ok = 1, delete_ok_at = ? WHERE id = ?`,
+                  args: [now, row.matched_bottle_id as string],
+                },
+              ])
             }
 
             let imageUrl = ''

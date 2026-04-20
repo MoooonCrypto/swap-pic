@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   // マッチング済み or 閲覧済み → 相手の画像を返す
   if ((status === 'matched' || status === 'viewed') && bottle.matched_bottle_id) {
     const matchedResult = await db.execute({
-      sql: `SELECT image_path, country_code, is_seed FROM bottles WHERE id = ? LIMIT 1`,
+      sql: `SELECT image_path, country_code FROM bottles WHERE id = ? LIMIT 1`,
       args: [bottle.matched_bottle_id as string],
     })
 
@@ -51,27 +51,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 初回閲覧時の処理
     if (status === 'matched') {
-      const isSeed = Number(matched.is_seed) === 1
       const now = new Date().toISOString()
-      if (isSeed) {
-        await db.execute({
+      await db.batch([
+        {
           sql: `UPDATE bottles SET status = 'viewed' WHERE id = ?`,
           args: [bottleId],
-        })
-      } else {
-        await db.batch([
-          {
-            sql: `UPDATE bottles SET status = 'viewed' WHERE id = ?`,
-            args: [bottleId],
-          },
-          {
-            sql: `UPDATE bottles SET delete_ok = 1, delete_ok_at = ? WHERE id = ?`,
-            args: [now, bottle.matched_bottle_id as string],
-          },
-        ])
-      }
+        },
+        {
+          sql: `UPDATE bottles SET delete_ok = 1, delete_ok_at = ? WHERE id = ?`,
+          args: [now, bottle.matched_bottle_id as string],
+        },
+      ])
     }
 
     return NextResponse.json({
