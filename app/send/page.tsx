@@ -4,7 +4,6 @@ import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { OceanBackground } from '@/components/OceanBackground'
 import { BottleSVG } from '@/components/BottleSVG'
-import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslation } from '@/lib/useTranslation'
 import { getOrCreateUserId } from '@/lib/anonymousUser'
 import Link from 'next/link'
@@ -104,7 +103,6 @@ export default function SendPage() {
         >
           BottleSwap
         </Link>
-        <LanguageSwitcher />
       </header>
 
       <div className="relative z-10 flex flex-col items-center text-center max-w-lg mx-auto mt-16 w-full">

@@ -2,7 +2,6 @@
 
 import { OceanBackground } from '@/components/OceanBackground'
 import { BottleSVG } from '@/components/BottleSVG'
-import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { useTranslation } from '@/lib/useTranslation'
 import Link from 'next/link'
 
@@ -21,7 +20,6 @@ export default function HomePage() {
         >
           BottleSwap
         </div>
-        <LanguageSwitcher />
       </header>
 
       {/* Hero section */}

@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { OceanBackground } from '@/components/OceanBackground'
 import { BottleSVG } from '@/components/BottleSVG'
-import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { CountryFlag } from '@/components/CountryFlag'
 import { useTranslation } from '@/lib/useTranslation'
 import Link from 'next/link'
@@ -203,7 +202,6 @@ export default function ReceivePage() {
         >
           BottleSwap
         </Link>
-        <LanguageSwitcher />
       </header>
 
       <Suspense
