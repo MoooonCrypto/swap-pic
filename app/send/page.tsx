@@ -73,6 +73,7 @@ export default function SendPage() {
       if (!res.ok) {
         const msgKey = data.error?.includes('Too many') ? 'error.rateLimit'
           : data.error?.includes('banned') ? 'error.banned'
+          : res.status === 409 ? 'error.alreadyWaiting'
           : 'error.uploadFailed'
         setError(t(msgKey as Parameters<typeof t>[0]))
         setStage('preview')

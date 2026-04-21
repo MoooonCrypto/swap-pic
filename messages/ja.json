@@ -51,7 +51,8 @@
     "invalidType": "JPEG, PNG, GIF, WebPのみ対応しています",
     "uploadFailed": "アップロードに失敗しました。もう一度お試しください。",
     "rateLimit": "しばらく時間をおいてからお試しください",
-    "banned": "利用が制限されています"
+    "banned": "利用が制限されています",
+    "alreadyWaiting": "すでに瓶を流しています。届くまでお待ちください。"
   },
   "share": {
     "button": "シェアする",

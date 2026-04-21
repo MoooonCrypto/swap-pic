@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getPresignedUrl } from '@/lib/storage'
 
-export const maxDuration = 70
+export const maxDuration = 40
 
 export async function GET(req: NextRequest) {
   const bottleId = req.nextUrl.searchParams.get('bottleId')
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
       const db = getDb()
       const startTime = Date.now()
-      const MAX_WAIT_MS = 60_000
+      const MAX_WAIT_MS = 30_000
 
       try {
         while (true) {

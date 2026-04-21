@@ -73,6 +73,8 @@ function WaitingContent() {
 
     es.onerror = () => {
       es.close()
+      savePendingBottle(bottleId, userId)
+      setPhase('floating')
     }
 
     return () => es.close()

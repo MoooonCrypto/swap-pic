@@ -48,6 +48,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid file type.' }, { status: 400 })
   }
 
+  const db = getDb()
+
+  // 既にwaitingのボトルがあれば投稿不可（アップロード前にチェック）
+  const existing = await db.execute({
+    sql: `SELECT id FROM bottles WHERE user_id = ? AND status = 'waiting' LIMIT 1`,
+    args: [userId],
+  })
+  if (existing.rows.length > 0) {
+    return NextResponse.json({ error: 'Already waiting.' }, { status: 409 })
+  }
+
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
@@ -76,7 +87,6 @@ export async function POST(req: NextRequest) {
   const countryCode = await getCountryCode(ip)
   const bottleId = uuidv4()
   const now = new Date().toISOString()
-  const db = getDb()
 
   try {
     await db.execute({
