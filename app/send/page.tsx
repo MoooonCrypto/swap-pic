@@ -102,7 +102,7 @@ export default function SendPage() {
           className="text-xl tracking-[0.15em] font-light transition-opacity hover:opacity-70"
           style={{ color: 'var(--ocean-foam)', fontFamily: 'Georgia, serif' }}
         >
-          ながれびん
+          BottleSwap
         </Link>
         <LanguageSwitcher />
       </header>

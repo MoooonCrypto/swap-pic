@@ -12,11 +12,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { bottleId } = await params
 
   return {
-    title: 'ながれびん — 知らない誰かの写真が届いた',
+    title: 'BottleSwap — 知らない誰かの写真が届いた',
     description: '海を漂うボトルに入った写真。あなたにも届くかもしれない。',
     openGraph: {
       title: '知らない誰かから写真が届いた 📬',
-      description: 'ながれびん — 匿名で写真を交換するサービス。あなたも瓶を流してみませんか？',
+      description: 'BottleSwap — 匿名で写真を交換するサービス。あなたも瓶を流してみませんか？',
       images: [
         {
           url: `/api/og?bottleId=${bottleId}`,
@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     twitter: {
       card: 'summary_large_image',
       title: '知らない誰かから写真が届いた 📬',
-      description: 'ながれびん — 匿名で写真を交換するサービス。',
+      description: 'BottleSwap — 匿名で写真を交換するサービス。',
       images: [`/api/og?bottleId=${bottleId}`],
     },
   }
@@ -65,7 +65,7 @@ export default async function ViewPage({ params }: Props) {
           className="text-xl tracking-[0.15em] font-light transition-opacity hover:opacity-70"
           style={{ color: 'var(--ocean-foam)', fontFamily: 'Georgia, serif' }}
         >
-          ながれびん
+          BottleSwap
         </Link>
       </header>
 

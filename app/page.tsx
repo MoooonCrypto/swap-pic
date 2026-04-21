@@ -19,7 +19,7 @@ export default function HomePage() {
           className="text-xl tracking-[0.15em] font-light"
           style={{ color: 'var(--ocean-foam)', fontFamily: 'Georgia, serif' }}
         >
-          ながれびん
+          BottleSwap
         </div>
         <LanguageSwitcher />
       </header>

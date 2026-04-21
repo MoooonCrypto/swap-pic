@@ -2,8 +2,8 @@
 
 import { v4 as uuidv4 } from 'uuid'
 
-const KEY = 'swap-pic-uid'
-const PENDING_KEY = 'swap-pic-pending'
+const KEY = 'bottleswap-uid'
+const PENDING_KEY = 'bottleswap-pending'
 
 export function getOrCreateUserId(): string {
   if (typeof window === 'undefined') return ''

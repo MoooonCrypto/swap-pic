@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import './globals.css'
 import { LocaleProvider } from '@/components/LocaleProvider'
 import { PendingBottleBanner } from '@/components/PendingBottleBanner'
-import { getLocaleFromCookie, type Locale } from '@/lib/i18n'
+import { getLocaleFromCookie, getLocaleFromAcceptLanguage, type Locale } from '@/lib/i18n'
 
 export const metadata: Metadata = {
-  title: 'ながれびん / Drift Pic',
-  description: '匿名で写真を交換する / Anonymous photo exchange',
+  title: 'BottleSwap',
+  description: 'Send a photo to a stranger. Receive one back. Anonymous photo exchange.',
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_BASE_URL ??
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
@@ -22,7 +22,14 @@ async function getMessages(locale: Locale) {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies()
   const localeCookie = cookieStore.get('locale')?.value ?? null
-  const locale = getLocaleFromCookie(localeCookie ? `locale=${localeCookie}` : null)
+  const fromCookie = getLocaleFromCookie(localeCookie ? `locale=${localeCookie}` : null)
+  let locale: Locale
+  if (fromCookie) {
+    locale = fromCookie
+  } else {
+    const headerStore = await headers()
+    locale = getLocaleFromAcceptLanguage(headerStore.get('accept-language'))
+  }
   const messages = await getMessages(locale)
 
   return (

@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Drift Pic — Share photos with a random stranger",
+    "title": "BottleSwap — Share photos with a random stranger",
     "description": "Put your photo in a bottle, cast it to sea. Receive a bottle from someone, somewhere."
   },
   "home": {
@@ -58,8 +58,8 @@
     "button": "Share",
     "copied": "Copied!",
     "title": "A photo arrived from a stranger",
-    "text": "I received a photo from a stranger on Nagare-bin. Cast your own bottle!",
-    "policy": "Photos received via Nagare-bin may be freely shared using the share feature. The uploader is solely responsible for the content of any uploaded image."
+    "text": "I received a photo from a stranger on BottleSwap. Cast your own bottle!",
+    "policy": "Photos received via BottleSwap may be freely shared using the share feature. The uploader is solely responsible for the content of any uploaded image."
   },
   "nav": {
     "lang": "日本語"
