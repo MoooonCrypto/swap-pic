@@ -17,21 +17,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: '知らない誰かから写真が届いた 📬',
       description: 'BottleSwap — 匿名で写真を交換するサービス。あなたも瓶を流してみませんか？',
-      images: [
-        {
-          url: `/api/og?bottleId=${bottleId}`,
-          width: 1200,
-          height: 900,
-          alt: 'A photo from a stranger',
-        },
-      ],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title: '知らない誰かから写真が届いた 📬',
       description: 'BottleSwap — 匿名で写真を交換するサービス。',
-      images: [`/api/og?bottleId=${bottleId}`],
     },
   }
 }
