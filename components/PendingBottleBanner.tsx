@@ -12,7 +12,7 @@ interface MatchedData {
   bottleId: string
 }
 
-const SKIP_PATHS = ['/waiting', '/receive', '/view']
+const SKIP_PATHS = ['/waiting', '/receive', '/view', '/history']
 
 export function PendingBottleBanner() {
   const router = useRouter()

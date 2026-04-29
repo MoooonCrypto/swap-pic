@@ -11,7 +11,7 @@
     "how1": "Pick a photo and seal the bottle",
     "how2": "Cast it out to sea",
     "how3": "Wait for a bottle to drift back",
-    "note": "Photos are automatically deleted 24 hours after exchange. No login. Fully anonymous."
+    "note": "No login. Fully anonymous. Exchanged photos are saved to your device history."
   },
   "send": {
     "title": "Seal your photo in a bottle",
@@ -44,7 +44,8 @@
     "from": "From where?",
     "unknown": "Unknown",
     "again": "Cast another",
-    "expires": "This photo disappears in 24 hours"
+    "expires": "You can revisit this photo anytime in your history",
+    "history": "History"
   },
   "error": {
     "fileTooLarge": "File too large (max 10MB)",

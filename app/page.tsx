@@ -20,6 +20,13 @@ export default function HomePage() {
         >
           BottleSwap
         </div>
+        <Link
+          href="/history"
+          className="text-xs tracking-widest transition-opacity hover:opacity-70"
+          style={{ color: 'var(--ocean-foam)', opacity: 0.6, letterSpacing: '0.12em' }}
+        >
+          {t('receive.history')}
+        </Link>
       </header>
 
       {/* Hero section */}

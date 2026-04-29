@@ -6,6 +6,7 @@ import { OceanBackground } from '@/components/OceanBackground'
 import { BottleSVG } from '@/components/BottleSVG'
 import { CountryFlag } from '@/components/CountryFlag'
 import { useTranslation } from '@/lib/useTranslation'
+import { getUserId, saveHistoryEntry } from '@/lib/anonymousUser'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -43,7 +44,13 @@ function ReceiveContent() {
 
   const handleOpen = () => {
     setStage('opening')
-    setTimeout(() => setStage('revealed'), 1200)
+    setTimeout(() => {
+      setStage('revealed')
+      if (bottleId) {
+        const userId = getUserId()
+        if (userId) saveHistoryEntry(bottleId, fromCountry || null)
+      }
+    }, 1200)
   }
 
   return (
