@@ -8,9 +8,7 @@ interface Props {
   params: Promise<{ bottleId: string }>
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { bottleId } = await params
-
+export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'BottleSwap — 知らない誰かの写真が届いた',
     description: '海を漂うボトルに入った写真。あなたにも届くかもしれない。',

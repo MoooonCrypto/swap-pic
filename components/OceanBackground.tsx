@@ -1,5 +1,28 @@
 'use client'
 
+import type { CSSProperties } from 'react'
+
+const STAR_COUNT = 40
+
+function seededValue(index: number, salt: number) {
+  const value = Math.sin(index * 12.9898 + salt * 78.233) * 43758.5453
+  return value - Math.floor(value)
+}
+
+function cssNumber(value: number) {
+  return value.toFixed(3).replace(/\.?0+$/, '')
+}
+
+const stars = Array.from({ length: STAR_COUNT }, (_, i) => ({
+  width: `${cssNumber(seededValue(i, 1) * 2 + 1)}px`,
+  height: `${cssNumber(seededValue(i, 2) * 2 + 1)}px`,
+  left: `${cssNumber(seededValue(i, 3) * 100)}%`,
+  top: `${cssNumber(seededValue(i, 4) * 45)}%`,
+  color: `rgba(232, 213, 183, ${cssNumber(seededValue(i, 5) * 0.5 + 0.3)})`,
+  duration: `${cssNumber(seededValue(i, 6) * 3 + 2)}s`,
+  delay: `${cssNumber(seededValue(i, 7) * 3)}s`,
+}))
+
 export function OceanBackground() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
@@ -12,19 +35,21 @@ export function OceanBackground() {
       />
 
       {/* Stars */}
-      {[...Array(40)].map((_, i) => (
+      {stars.map((star, i) => (
         <div
           key={i}
-          className="absolute rounded-full"
-          style={{
-            width: Math.random() * 2 + 1 + 'px',
-            height: Math.random() * 2 + 1 + 'px',
-            left: Math.random() * 100 + '%',
-            top: Math.random() * 45 + '%',
-            background: 'rgba(232, 213, 183, ' + (Math.random() * 0.5 + 0.3) + ')',
-            animation: `pulse-glow ${Math.random() * 3 + 2}s ease-in-out infinite`,
-            animationDelay: Math.random() * 3 + 's',
-          }}
+          className="absolute rounded-full [animation-delay:var(--star-delay)] [animation-duration:var(--star-duration)] [animation-iteration-count:infinite] [animation-name:pulse-glow] [animation-timing-function:ease-in-out] [background-color:var(--star-color)] [height:var(--star-height)] [left:var(--star-left)] [top:var(--star-top)] [width:var(--star-width)]"
+          style={
+            {
+              '--star-width': star.width,
+              '--star-height': star.height,
+              '--star-left': star.left,
+              '--star-top': star.top,
+              '--star-color': star.color,
+              '--star-duration': star.duration,
+              '--star-delay': star.delay,
+            } as CSSProperties
+          }
         />
       ))}
 

@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [claude/anonymous-image-sharing-2KS4M]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      TURSO_DATABASE_URL: libsql://ci-placeholder.turso.io
+      TURSO_AUTH_TOKEN: ci-placeholder-token
+      R2_ENDPOINT: https://ci-placeholder.r2.cloudflarestorage.com
+      R2_ACCESS_KEY_ID: ci-placeholder-access-key
+      R2_SECRET_ACCESS_KEY: ci-placeholder-secret-key
+      R2_BUCKET_NAME: swap-pic-images
+      CRON_SECRET: ci-placeholder-cron-secret
+      IP_SALT: ci-placeholder-ip-salt
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build

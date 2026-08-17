@@ -195,8 +195,6 @@ function ReceiveContent() {
 }
 
 export default function ReceivePage() {
-  const { t } = useTranslation()
-
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-4">
       <OceanBackground />

@@ -21,11 +21,26 @@ function HistoryCard({ entry }: { entry: HistoryEntry }) {
 
   useEffect(() => {
     const userId = getUserId()
-    if (!userId) { setLoading(false); return }
+    if (!userId) {
+      queueMicrotask(() => setLoading(false))
+      return
+    }
+
+    let ignore = false
     fetch(`/api/history-image?bottleId=${entry.myBottleId}&userId=${userId}`)
       .then((r) => r.json())
-      .then((data) => { setImages(data); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then((data) => {
+        if (ignore) return
+        setImages(data)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!ignore) setLoading(false)
+      })
+
+    return () => {
+      ignore = true
+    }
   }, [entry.myBottleId])
 
   const date = new Date(entry.date).toLocaleDateString(undefined, {
@@ -99,8 +114,17 @@ export default function HistoryPage() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setHistory(getHistory())
-    setMounted(true)
+    let ignore = false
+
+    queueMicrotask(() => {
+      if (ignore) return
+      setHistory(getHistory())
+      setMounted(true)
+    })
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   return (
