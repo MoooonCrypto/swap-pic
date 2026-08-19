@@ -1,12 +1,12 @@
 # BottleSwap
 
+## 概要
+
 匿名で写真を交換するWebアプリです。写真を「瓶」として流すと、別のユーザーが流した写真とマッチングされます。
 
 画像本体はCloudflare R2に保存し、マッチング状態などのメタデータはTurso/libSQLで管理します。
 
 https://swap.mokosau.com/
-
-## 画面
 
 トップ画面では、写真を流す体験がすぐ伝わるように導線を絞っています。
 
@@ -25,7 +25,7 @@ https://swap.mokosau.com/
 - OGP画像と共有用ページ
 - IPハッシュによる簡易rate limit / ban判定
 
-## 技術構成
+## 技術スタック
 
 - Next.js 16 App Router
 - React 19 / TypeScript
@@ -35,14 +35,14 @@ https://swap.mokosau.com/
 - sharp
 - next-intl
 
-## 実装
+## 設計・実装
 
 - `/api/upload` で画像形式とサイズを検証し、`sharp` でEXIF除去、リサイズ、JPEG再エンコードを行います。
 - 画像はR2のprivate bucketに保存し、DBにはobject keyのみを保存します。
 - `/api/stream` はSSEでマッチング状態を待ち、成立時に相手画像の署名付きURLを返します。
 - `turso/schema.sql` にTurso/libSQL用のschemaを置いています。
 
-## ローカル起動
+## セットアップ
 
 ```bash
 npm ci
@@ -55,3 +55,7 @@ npm run dev
 ```bash
 turso db shell <database-name> < turso/schema.sql
 ```
+
+## その他
+
+Vercel向けに `vercel.json` で画像アップロードAPIの最大実行時間を設定しています。
