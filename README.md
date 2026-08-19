@@ -1,18 +1,31 @@
-# BottleSwap / swap-pic
+# BottleSwap
 
-匿名で写真を交換するWebアプリです。ユーザーが写真を「瓶」として流すと、別のユーザーの写真とマッチングされます。画像本体はCloudflare R2に保存し、マッチング状態や履歴参照に必要なメタデータはTurso/libSQLで管理します。
+匿名で写真を交換するWebアプリです。写真を「瓶」として流すと、別のユーザーが流した写真とマッチングされます。
 
-## Features
+画像本体はCloudflare R2に保存し、マッチング状態などのメタデータはTurso/libSQLで管理します。
 
-- 匿名ユーザーIDによる写真アップロード・交換
-- `waiting` / `matched` / `viewed` の状態管理
+https://swap.mokosau.com/
+
+## 画面
+
+トップ画面では、写真を流す体験がすぐ伝わるように導線を絞っています。
+
+![トップ画面](docs/images/home.png)
+
+送信画面では、画像選択からアップロードまでを迷わず進められる構成にしています。
+
+![送信画面](docs/images/send.png)
+
+## 機能
+
+- 写真のアップロードと匿名マッチング
 - Server-Sent Eventsによる待機画面の更新
 - R2署名付きURLによる受信画像表示
-- localStorageベースの交換履歴
-- OGP画像と共有用viewページ
+- localStorageを使った交換履歴
+- OGP画像と共有用ページ
 - IPハッシュによる簡易rate limit / ban判定
 
-## Tech Stack
+## 技術構成
 
 - Next.js 16 App Router
 - React 19 / TypeScript
@@ -22,66 +35,23 @@
 - sharp
 - next-intl
 
-## Implementation Notes
+## 実装
 
-- `/api/upload` で画像を検証し、`sharp` でEXIF除去・最大1920pxへのリサイズ・JPEG再エンコードを行います。
+- `/api/upload` で画像形式とサイズを検証し、`sharp` でEXIF除去、リサイズ、JPEG再エンコードを行います。
 - 画像はR2のprivate bucketに保存し、DBにはobject keyのみを保存します。
-- `/api/stream` は最大30秒SSEでマッチング状態を待ち、成立時に受信画像の署名付きURLを返します。
-- `turso/schema.sql` はTurso/libSQL用の初期schemaです。
-- `CRON_SECRET` は `/api/admin/seed` などの管理用APIでBearer tokenとして使います。
+- `/api/stream` はSSEでマッチング状態を待ち、成立時に相手画像の署名付きURLを返します。
+- `turso/schema.sql` にTurso/libSQL用のschemaを置いています。
 
-## Setup
+## ローカル起動
 
 ```bash
 npm ci
 cp .env.example .env.local
+npm run dev
 ```
 
-`.env.local` にTursoとCloudflare R2の値を設定します。実credentialはcommitしません。
-
-```env
-TURSO_DATABASE_URL=libsql://your-database.turso.io
-TURSO_AUTH_TOKEN=your-turso-auth-token
-R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
-R2_ACCESS_KEY_ID=your-r2-access-key-id
-R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
-R2_BUCKET_NAME=swap-pic-images
-CRON_SECRET=replace-with-a-random-secret
-IP_SALT=replace-with-a-random-salt
-```
-
-Tursoにschemaを適用します。
+必要な環境変数は `.env.example` を参照してください。Tursoの初期schemaは以下で適用します。
 
 ```bash
 turso db shell <database-name> < turso/schema.sql
 ```
-
-開発サーバーを起動します。
-
-```bash
-npm run dev
-```
-
-## Scripts
-
-```bash
-npm run dev
-npm run lint
-npm run build
-npm run start
-npm audit
-```
-
-## Verification
-
-Current status:
-
-- `npm run lint` passes
-- `npm run build` passes
-- `npm audit` reports `0 vulnerabilities`
-
-## Future Improvements
-
-- Public demo URL and screenshots
-- Image moderation / report flow
-- Integration tests for upload, matching, and receiving
